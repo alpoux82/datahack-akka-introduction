@@ -5,7 +5,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorRef, Props}
 import com.datahack.akka.http.controller.actors.SessionControllerActor.{AddOrderToSession, FinishSession, RemoveSession, SessionNotFound}
 import com.datahack.akka.http.model.dtos.Order
-import com.datahack.akka.http.service.actors.Session
+import com.datahack.akka.http.service.actors.{Inventory, Session}
 import com.datahack.akka.http.service.actors.Session.{CancelSession, Checkout, ProcessOrder, SessionFinished}
 
 import scala.collection.mutable
@@ -22,7 +22,7 @@ object SessionControllerActor {
 }
 
 // TODO: recive por parámetro la referencia al actor de inventario
-class SessionControllerActor extends Actor {
+class SessionControllerActor(inventory: Inventory) extends Actor {
 
   implicit val executionContext: ExecutionContext = context.dispatcher
 

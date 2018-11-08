@@ -18,11 +18,31 @@ class ProductController (productActor: ActorRef)
 
   implicit val timeout: Timeout = Timeout(60 seconds)
 
-  val routes: Route = ???
+  val routes: Route = getAllProducts ~ getProduct
 
-  def getAllProducts: server.Route = ???
+  def getAllProducts: server.Route = {
+    path("products") {
+      get {
+        onSuccess(productActor ? GetAllProducts) {
+          case AllProducts(products) => complete(products)
+          case _ => complete(StatusCodes.InternalServerError)
 
-  def getProduct: server.Route = ???
+        }
+      }
+    }
+  }
+
+  def getProduct: server.Route = {
+    path("products" / LongNumber) { productId =>
+      get {
+        onSuccess(productActor ? SearchProduct(productId)) {
+          case FoundProduct(product) => complete(product)
+          case ProductNotFound => complete(StatusCodes.NotFound)
+          case _ => complete(StatusCodes.InternalServerError)
+        }
+      }
+    }
+  }
 
   def insertProduct: server.Route = ???
 

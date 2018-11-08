@@ -1,5 +1,7 @@
 package com.datahack.akka.http.service
 
+import java.util.NoSuchElementException
+
 import com.datahack.akka.http.model.daos.ProductDao
 import com.datahack.akka.http.model.dtos.Product
 import com.datahack.akka.http.service.ProductService._
@@ -23,15 +25,43 @@ object ProductService {
 
 class ProductService(productDao: ProductDao) {
 
-  def products()(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = ???
+  def products()(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = {
+    productDao.getAll.map(AllProducts)
+  }
 
-  def searchProduct(id: Long)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = ???
+  def searchProduct(id: Long)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = {
+    productDao.getById(id).map(_.map(FoundProduct).getOrElse(ProductNotFound))
+  }
 
-  def insertProduct(product: Product)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = ???
+  def insertProduct(product: Product)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = {
+    for {
+      id <- productDao.insert(product)
+      product <- productDao.getById(id)
+    } yield StoredProduct(product)
+  }
 
-  def updateProduct(product: Product)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = ???
+  def updateProduct(product: Product)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = {
+    (for {
+      id <- productDao.getById(product.id.get)
+      if id.isDefined
+      _ <- productDao.update(product)
+      updatedProduct <- productDao.getById(product.id.get)
+    } yield updatedProduct.map(UpdatedProduct).get) recover{
+      case _: NoSuchElementException => ProductNotFound
+      case e: Exception => throw e
+    }
+  }
 
-  def deleteProduct(id: Long)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = ???
+  def deleteProduct(id: Long)(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = {
+    (for {
+      productFound <- productDao.getById(id)
+      if productFound.isDefined
+      _ <- productDao.delete(id)
+    } yield ProductDeleted ) recover {
+      case _: NoSuchElementException => ProductNotFound
+      case e: Exception => throw e
+    }
+  }
 
   def persistSession(items: Seq[(Long, Float)])(implicit executionContext: ExecutionContext): Future[ProductServiceResponse] = {
     for {
